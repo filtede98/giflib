@@ -373,22 +373,27 @@ SavedImage *GifMakeSavedImage(GifFileType *GifFile,
 			}
 
 			/* next, the raster */
-			sp->RasterBits = (unsigned char *)reallocarray(
-			    NULL,
-			    (size_t)CopyFrom->ImageDesc.Height *
-			        CopyFrom->ImageDesc.Width,
-			    sizeof(GifPixelType));
-			if (sp->RasterBits == NULL) {
-				FreeLastSavedImage(GifFile);
-				return (SavedImage *)(NULL);
+			if (CopyFrom->RasterBits != NULL &&
+			    CopyFrom->ImageDesc.Height > 0 &&
+			    CopyFrom->ImageDesc.Width > 0) {
+				sp->RasterBits = (unsigned char *)reallocarray(
+				    NULL,
+				    (size_t)CopyFrom->ImageDesc.Height *
+				        CopyFrom->ImageDesc.Width,
+				    sizeof(GifPixelType));
+				if (sp->RasterBits == NULL) {
+					FreeLastSavedImage(GifFile);
+					return (SavedImage *)(NULL);
+				}
+				memcpy(sp->RasterBits, CopyFrom->RasterBits,
+				       (size_t)CopyFrom->ImageDesc.Height *
+				           CopyFrom->ImageDesc.Width *
+				           sizeof(GifPixelType));
 			}
-			memcpy(sp->RasterBits, CopyFrom->RasterBits,
-			       (size_t)CopyFrom->ImageDesc.Height *
-			           CopyFrom->ImageDesc.Width *
-			           sizeof(GifPixelType));
 
 			/* finally, the extension blocks */
-			if (CopyFrom->ExtensionBlocks != NULL) {
+			if (CopyFrom->ExtensionBlocks != NULL &&
+			    CopyFrom->ExtensionBlockCount > 0) {
 				int k;
 				sp->ExtensionBlocks =
 				    (ExtensionBlock *)calloc(
@@ -415,9 +420,12 @@ SavedImage *GifMakeSavedImage(GifFileType *GifFile,
 							    GifFile);
 							return (SavedImage *)(NULL);
 						}
-						memcpy(dst->Bytes, src->Bytes,
-						       src->ByteCount);
+						if (src->Bytes != NULL) {
+							memcpy(dst->Bytes, src->Bytes,
+							       src->ByteCount);
+						}
 					}
+					sp->ExtensionBlockCount++;
 				}
 			}
 		} else {
@@ -450,6 +458,7 @@ void GifFreeSavedImages(GifFileType *GifFile) {
 	}
 	free((char *)GifFile->SavedImages);
 	GifFile->SavedImages = NULL;
+	GifFile->ImageCount = 0;
 }
 
 /* end */
